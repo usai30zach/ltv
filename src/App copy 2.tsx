@@ -1,9 +1,7 @@
-// Inside your React component...
-//import './App.css';
-import { useRef, useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useRef } from "react";
 import axios from "axios";
 import { unparse } from "papaparse";
-import html2pdf from "html2pdf.js";
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
 function App() {
@@ -18,21 +16,17 @@ function App() {
   const [sortAsc, setSortAsc] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [isPrinting, setIsPrinting] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
-  const previousSearch = useRef("");
   const COLORS = ["#3b82f6", "#22c55e", "#f97316", "#ef4444", "#a855f7"];
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0];
     setFile(selected || null);
   };
-
   const formatCurrency = (value: string | number) => {
     const num = typeof value === "string" ? parseFloat(value) : value;
-    return num.toLocaleString("en-US", { style: "currency", currency: "CAD" });
+    return num.toLocaleString("en-US", { style: "currency", currency: "USD" });
   };
-
   const handleUpload = async () => {
     if (!file) return;
     setLoading(true);
@@ -42,31 +36,22 @@ function App() {
 
     try {
       const res = await axios.post("http://localhost:5000/upload", formData);
-      const dataWithFormattedValues = res.data.data.map((row: any) => {
-        const updatedRow = { ...row };
-        updatedRow.TotalRevenue = formatCurrency(row.TotalRevenue);
-        updatedRow.AvgSale = formatCurrency(row.AvgSale);
-        updatedRow.LTV = formatCurrency(row.LTV);
-        updatedRow.AvgRetention = parseFloat(row.AvgRetention).toFixed(2);
+const dataWithFormattedValues = res.data.data.map((row: any) => {
+  const updatedRow: any = {
+    CustomerID: row.CustomerID,
+    TotalRevenue: formatCurrency(row.TotalRevenue),
+    Orders: row.Orders,
+    AvgSale: formatCurrency(row.AvgSale),
+    AvgRetention: `${row.AvgRetention} Days`,
+    "# transactions": row["PurchaseFrequency"],
+    CustomerLifespan: `${parseFloat(row.CustomerLifespan).toFixed(0)} Days`,
+    LTV: formatCurrency(row.LTV),
+  };
 
-        const reorderedRow: any = {
-          CustomerID: updatedRow.CustomerID,
-          TotalRevenue: updatedRow.TotalRevenue,
-          //Orders: updatedRow.Orders,
-          AvgSale: updatedRow.AvgSale,
-          "Avg retention per month": updatedRow.AvgRetention,
-          "# transactions": updatedRow.PurchaseFrequency,
-          LTV: updatedRow.LTV,
-        };
-        return reorderedRow;
-      });
-      // setReport(dataWithFormattedValues);
-      setReport(
-        dataWithFormattedValues.sort((a, b) =>
-          String(a.CustomerID).localeCompare(String(b.CustomerID))
-        )
-      );
-      setOrders(res.data.orders);
+  return updatedRow;
+});
+setReport(dataWithFormattedValues);
+setOrders(res.data.orders);
     } catch (err: any) {
       setError(err.response?.data?.error || "Upload failed");
     } finally {
@@ -74,15 +59,34 @@ function App() {
     }
   };
 
+  // const handleUpload = async () => {
+  //   if (!file) return;
+  //   setLoading(true);
+  //   setError("");
+  //   const formData = new FormData();
+  //   formData.append("file", file);
+
+  //   try {
+  //     const res = await axios.post("http://localhost:5000/upload", formData);
+  //     setReport(res.data.data);
+  //     setOrders(res.data.orders);
+  //   } catch (err: any) {
+  //     setError(err.response?.data?.error || "Upload failed");
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
   const handleExport = () => {
     if (!filtered || filtered.length === 0) {
       alert("There is no data to export.");
       return;
     }
+  
     const csv = unparse(filtered);
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
+  
     const link = document.createElement("a");
     link.href = url;
     link.setAttribute("download", "ltv_report.csv");
@@ -90,42 +94,8 @@ function App() {
     link.click();
     document.body.removeChild(link);
   };
-
-  // const modalRef = useRef<HTMLDivElement>(null);
-
-  const handleExportPDF = () => {
-    const element = modalRef.current;
-    if (!element) return;
-
-    setIsPrinting(true);
-
-    const originalMaxHeight = element.style.maxHeight;
-    const originalOverflow = element.style.overflowY;
-    element.style.maxHeight = "none";
-    element.style.overflowY = "visible";
-
-    const customerName = selectedCustomer.CustomerID || selectedCustomer.Customer || "transaction-report";
-    const safeFileName = customerName.replace(/[<>:"/\\|?*]+/g, "").replace(/\s+/g, "_");
-
-    import("html2pdf.js").then((html2pdf) => {
-      html2pdf.default()
-        .set({
-          margin: 0.5,
-          filename: `${safeFileName}_transaction_history.pdf`,
-          image: { type: "jpeg", quality: 0.98 },
-          html2canvas: { scale: 2 },
-          jsPDF: { unit: "in", format: "letter", orientation: "portrait" },
-        })
-        .from(element)
-        .save()
-        .then(() => {
-          element.style.maxHeight = originalMaxHeight;
-          element.style.overflowY = originalOverflow;
-        })
-        .finally(() => setIsPrinting(false));
-    });
-  };
   
+
   const handleSort = (key: string) => {
     if (sortKey === key) {
       setSortAsc(!sortAsc);
@@ -134,6 +104,80 @@ function App() {
       setSortAsc(true);
     }
   };
+
+  const filtered = useMemo(() => {
+    let data = [...report];
+  
+    if (search) {
+      data = data.filter((row) =>
+        Object.values(row).some((val) =>
+          String(val).toLowerCase().includes(search.toLowerCase())
+        )
+      );
+    }
+  
+    const newTotalPages = Math.ceil(data.length / rowsPerPage);
+    if (currentPage > newTotalPages) {
+      setCurrentPage(1); // go to page 1 only if current page exceeds total pages
+    }
+  
+    return data;
+  }, [report, search, sortKey, sortAsc, currentPage, rowsPerPage]);
+
+  const totalPages = Math.ceil(filtered.length / rowsPerPage);
+  const paginatedData = filtered.slice(
+    (currentPage - 1) * rowsPerPage,
+    currentPage * rowsPerPage
+  );
+
+
+  const previousSearch = useRef("");
+  const previousPage = useRef(1);
+  const isSearchActive = useRef(false);
+
+  useEffect(() => {
+    const prev = previousSearch.current;
+    const curr = search;
+  
+    // Search started
+    if (!isSearchActive.current && curr !== "") {
+      previousPage.current = currentPage;
+      setCurrentPage(1);
+      isSearchActive.current = true;
+    }
+  
+    // Search cleared
+    if (isSearchActive.current && curr === "") {
+      setCurrentPage(previousPage.current);
+      isSearchActive.current = false;
+    }
+  
+    previousSearch.current = curr;
+  }, [search]);
+
+
+  const getPaginationPages = () => {
+    const totalNumbers = 5;
+    const pages: (number | string)[] = [];
+    if (totalPages <= totalNumbers) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      const left = Math.max(1, currentPage - 1);
+      const right = Math.min(totalPages, currentPage + 1);
+      if (left > 1) pages.push(1, "...");
+      for (let i = left; i <= right; i++) pages.push(i);
+      if (right < totalPages) pages.push("...", totalPages);
+    }
+    return pages;
+  };
+
+  // const formatValue = (key: string, value: any) => {
+  //   const currencyKeys = ["TotalRevenue", "AvgOrderValue", "LTV"];
+  //   const lifespanKeys = ["CustomerLifespan"];
+  //   if (currencyKeys.includes(key)) return `$${value}`;
+  //   if (lifespanKeys.includes(key)) return `${value} Days`;
+  //   return value;
+  // };
 
   const getCustomerGroupedOrders = (customerId: string) => {
     if (!orders || !Array.isArray(orders)) return { summary: [], totalTransactions: 0 };
@@ -177,61 +221,6 @@ function App() {
 
     return { summary, totalTransactions };
   };
-
-  useEffect(() => {
-    if (search !== previousSearch.current) {
-      setCurrentPage(1);
-    }
-    previousSearch.current = search;
-  }, [search]);
-
-  const filtered = useMemo(() => {
-    let data = [...report];
-    if (search) {
-      data = data.filter((row) =>
-        Object.values(row).some((val) =>
-          String(val).toLowerCase().includes(search.toLowerCase())
-        )
-      );
-    }
-    if (sortKey) {
-      data.sort((a, b) => {
-        const aVal = a[sortKey];
-        const bVal = b[sortKey];
-        const aNum = parseFloat(aVal);
-        const bNum = parseFloat(bVal);
-        if (!isNaN(aNum) && !isNaN(bNum)) {
-          return sortAsc ? aNum - bNum : bNum - aNum;
-        }
-        return sortAsc
-          ? String(aVal).localeCompare(String(bVal))
-          : String(bVal).localeCompare(String(aVal));
-      });
-    }
-    return data;
-  }, [report, search, sortKey, sortAsc]);
-
-  const totalPages = Math.ceil(filtered.length / rowsPerPage);
-  const paginatedData = filtered.slice(
-    (currentPage - 1) * rowsPerPage,
-    currentPage * rowsPerPage
-  );
-
-  const getPaginationPages = () => {
-    const totalNumbers = 5;
-    const pages: (number | string)[] = [];
-    if (totalPages <= totalNumbers) {
-      for (let i = 1; i <= totalPages; i++) pages.push(i);
-    } else {
-      const left = Math.max(1, currentPage - 1);
-      const right = Math.min(totalPages, currentPage + 1);
-      if (left > 1) pages.push(1, "...");
-      for (let i = left; i <= right; i++) pages.push(i);
-      if (right < totalPages) pages.push("...", totalPages);
-    }
-    return pages;
-  };
-
   useEffect(() => {
     const handleOutsideClick = (e: MouseEvent) => {
       if (selectedCustomer && modalRef.current && !modalRef.current.contains(e.target as Node)) {
@@ -244,8 +233,8 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-100 p-8">
-      
       <h1 className="text-2xl font-bold mb-6">📊 LTV Report Dashboard</h1>
+
       <div className="mb-6 flex gap-4 flex-wrap items-center">
         <input type="file" onChange={handleFileChange} />
         <button
@@ -255,15 +244,17 @@ function App() {
         >
           {loading ? "Uploading..." : "Upload CSV"}
         </button>
+       
       </div>
       <div className="mb-6 flex gap-4 flex-wrap items-center justify-end">
-        <input
+      <input
           type="text"
           placeholder="Search..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="border px-3 py-2 rounded"
         />
+   
         <label className="flex items-center gap-2">
           Rows:
           <select
@@ -277,34 +268,28 @@ function App() {
           </select>
         </label>
         <button
-          onClick={handleExport}
-          className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-        >
-          📤 Export CSV
-        </button>
+  onClick={handleExport}
+  className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+>
+  📤 Export CSV
+</button>
       </div>
+     
+
       {report.length > 0 && (
         <div className="overflow-x-auto bg-white rounded shadow">
           <table className="min-w-full text-sm text-left">
             <thead className="bg-gray-200">
               <tr>
-                {Object.keys(report[0]).map((key) => {
-                  const displayKey =
-                  key === "AvgRetention"
-                    ? "Avg retention per month"
-                    : key === "CustomerID"
-                    ? "Customer Name"
-                    : key;
-                  return (
-                    <th
-                      key={key}
-                      className="px-4 py-2 cursor-pointer"
-                      onClick={() => handleSort(key)}
-                    >
-                      {displayKey} {sortKey === key ? (sortAsc ? "🔼" : "🔽") : ""}
-                    </th>
-                  );
-                })}
+                {Object.keys(report[0]).map((key) => (
+                  <th
+                    key={key}
+                    className="px-4 py-2 cursor-pointer"
+                    onClick={() => handleSort(key)}
+                  >
+                    {key} {sortKey === key ? (sortAsc ? "🔼" : "🔽") : ""}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
@@ -323,6 +308,8 @@ function App() {
           </table>
         </div>
       )}
+
+      {/* Pagination */}
       {totalPages > 1 && (
         <div className="mt-4 flex justify-between items-center">
           <div>Page {currentPage} of {totalPages}</div>
@@ -344,6 +331,78 @@ function App() {
       )}
 
       {/* Modal */}
+      {/* {selectedCustomer && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+          <div ref={modalRef} className="bg-white p-6 rounded-lg max-w-6xl w-full max-h-[90vh] overflow-y-auto">
+            <h2 className="text-lg font-bold mb-4 text-blue-700">
+              Transaction History: {selectedCustomer.CustomerID || selectedCustomer.Customer}
+            </h2>
+
+            <ResponsiveContainer width="100%" height={250}>
+              <PieChart>
+                <Pie
+                  data={getCustomerGroupedOrders(selectedCustomer.CustomerID).summary}
+                  dataKey="transactionCount"
+                  nameKey="month"
+                  outerRadius={80}
+                  fill="#8884d8"
+                  label
+                >
+                  {getCustomerGroupedOrders(selectedCustomer.CustomerID).summary.map((_, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+
+            <table className="min-w-full text-sm text-left mt-6">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="px-4 py-2">Month</th>
+                  <th className="px-4 py-2">Transactions</th>
+                  <th className="px-4 py-2">Total Sales</th>
+                  <th className="px-4 py-2">SO#</th>
+                  <th className="px-4 py-2">Dates</th>
+                  <th className="px-4 py-2">Sales Rep</th>
+                  <th className="px-4 py-2">Estimator</th>
+                  <th className="px-4 py-2">CSR</th>
+                  <th className="px-4 py-2">Created By</th>
+                </tr>
+              </thead>
+              <tbody>
+                {getCustomerGroupedOrders(selectedCustomer.CustomerID).summary.map((row, idx) => (
+                  <tr key={idx} className="border-t">
+                    <td className="px-4 py-2">{row.month}</td>
+                    <td className="px-4 py-2">{row.transactionCount}</td>
+                    <td className="px-4 py-2">${row.totalSales.toFixed(2)}</td>
+                    <td className="px-4 py-2">{row.orderList.join(", ")}</td>
+                    <td className="px-4 py-2">{row.dates.join(", ")}</td>
+                    <td className="px-4 py-2">{row.salesReps.join(", ")}</td>
+                    <td className="px-4 py-2">{row.estimators.join(", ")}</td>
+                    <td className="px-4 py-2">{row.csrs.join(", ")}</td>
+                    <td className="px-4 py-2">{row.creators.join(", ")}</td>
+                  </tr>
+                ))}
+                <tr className="font-semibold border-t">
+                  <td className="px-4 py-2">Total Transactions</td>
+                  <td className="px-4 py-2" colSpan={8}>{getCustomerGroupedOrders(selectedCustomer.CustomerID).totalTransactions}</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <div className="text-right">
+              <button
+                onClick={() => setSelectedCustomer(null)}
+                className="mt-4 px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )} */}
       {selectedCustomer && (
   <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
     <div
@@ -382,21 +441,19 @@ function App() {
             </div>
 
             <div className="grid grid-cols-2 gap-6 text-sm text-gray-800">
-            {!isPrinting && (
-    <div className="hide-in-print">
-      <h4 className="font-medium mb-1">SO# & Dates</h4>
-      <div className="max-h-40 overflow-y-auto space-y-1">
-        {row.orderList.map((order: string, i: number) => (
-          <div key={i}>
-            <strong>SO#:</strong> {order} <span className="text-gray-500">— {row.dates[i]}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  )}
+              <div>
+                <h4 className="font-medium mb-1">SO# & Dates</h4>
+                <div className="max-h-40 overflow-y-auto space-y-1">
+                  {row.orderList.map((order: string, i: number) => (
+                    <div key={i}>
+                      <strong>SO#:</strong> {order} <span className="text-gray-500">— {row.dates[i]}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
 
-              <div className={`${isPrinting ? "col-span-2 text-left" : ""}`}>
-                <h4 className="font-medium mb-1 print-left-align">Details</h4>
+              <div>
+                <h4 className="font-medium mb-1">Details</h4>
                 <div><strong>Sales Rep:</strong> {row.salesReps.join(", ") || "-"}</div>
                 <div><strong>Estimator:</strong> {row.estimators.join(", ") || "-"}</div>
                 <div><strong>CSR:</strong> {row.csrs.join(", ") || "-"}</div>
@@ -413,20 +470,19 @@ function App() {
           }
         </div>
       </div>
-<div className="print:hidden">
-  <div className="text-right mt-6">
-        <button onClick={() => setSelectedCustomer(null)} className="mt-2 px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700" >
+
+      <div className="text-right mt-6">
+        <button
+          onClick={() => setSelectedCustomer(null)}
+          className="mt-2 px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
+        >
           Close
         </button>
-        <button onClick={handleExportPDF} className="mt-4 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700" >
-  📄        Export PDF
-         </button>
-  </div>
-</div>
-      
+      </div>
     </div>
   </div>
 )}
+
     </div>
   );
 }

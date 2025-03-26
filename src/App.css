@@ -33,6 +33,18 @@
   }
 }
 
+@media print {
+  .hide-in-print {
+    display: none !important;
+  }
+
+  /* .print-left-align {
+    text-align: left !important;
+    align-items: flex-start !important;
+    justify-content: flex-start !important;
+  } */
+}
+
 .card {
   padding: 2em;
 }
