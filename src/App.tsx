@@ -41,7 +41,8 @@ function App() {
     formData.append("file", file);
 
     try {
-      const res = await axios.post("http://localhost:5000/upload", formData);
+      // const res = await axios.post("http://localhost:5000/upload", formData);
+      const res = await axios.post("https://ltv-back-end.onrender.com/upload", formData);
       const dataWithFormattedValues = res.data.data.map((row: any) => {
         const updatedRow = { ...row };
         updatedRow.TotalRevenue = formatCurrency(row.TotalRevenue);
