@@ -1,9 +1,8 @@
-// Inside your React component...
-//import './App.css';
+import "./App.css";
 import { useRef, useState, useEffect, useMemo } from "react";
 import axios from "axios";
 import { unparse } from "papaparse";
-import html2pdf from "html2pdf.js";
+//import html2pdf from "html2pdf.js";
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
 function App() {
@@ -11,7 +10,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [report, setReport] = useState<any[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
-  const [error, setError] = useState("");
+  const [_error, setError] = useState("");
   const [selectedCustomer, setSelectedCustomer] = useState<any | null>(null);
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState("");
@@ -41,8 +40,7 @@ function App() {
     formData.append("file", file);
 
     try {
-      // const res = await axios.post("http://localhost:5000/upload", formData);
-      const res = await axios.post("https://ltv-back-end.onrender.com/upload", formData);
+      const res = await axios.post(`${import.meta.env.VITE_API_URL}/upload`, formData);
       const dataWithFormattedValues = res.data.data.map((row: any) => {
         const updatedRow = { ...row };
         updatedRow.TotalRevenue = formatCurrency(row.TotalRevenue);
@@ -50,20 +48,18 @@ function App() {
         updatedRow.LTV = formatCurrency(row.LTV);
         updatedRow.AvgRetention = parseFloat(row.AvgRetention).toFixed(2);
 
-        const reorderedRow: any = {
+        return {
           CustomerID: updatedRow.CustomerID,
           TotalRevenue: updatedRow.TotalRevenue,
-          //Orders: updatedRow.Orders,
           AvgSale: updatedRow.AvgSale,
           "Avg retention per month": updatedRow.AvgRetention,
           "# transactions": updatedRow.PurchaseFrequency,
           LTV: updatedRow.LTV,
         };
-        return reorderedRow;
       });
-      // setReport(dataWithFormattedValues);
+
       setReport(
-        dataWithFormattedValues.sort((a, b) =>
+        dataWithFormattedValues.sort((a: any, b: any) =>
           String(a.CustomerID).localeCompare(String(b.CustomerID))
         )
       );
@@ -74,7 +70,6 @@ function App() {
       setLoading(false);
     }
   };
-
 
   const handleExport = () => {
     if (!filtered || filtered.length === 0) {
@@ -92,14 +87,11 @@ function App() {
     document.body.removeChild(link);
   };
 
-  // const modalRef = useRef<HTMLDivElement>(null);
-
   const handleExportPDF = () => {
     const element = modalRef.current;
     if (!element) return;
 
     setIsPrinting(true);
-
     const originalMaxHeight = element.style.maxHeight;
     const originalOverflow = element.style.overflowY;
     element.style.maxHeight = "none";
@@ -316,7 +308,7 @@ function App() {
                   onClick={() => setSelectedCustomer(row)}
                 >
                   {Object.values(row).map((val, i) => (
-                    <td key={i} className="px-4 py-2">{val}</td>
+                    <td key={i} className="px-4 py-2">{String(val)}</td>
                   ))}
                 </tr>
               ))}
