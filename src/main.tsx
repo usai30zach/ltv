@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import "./index.css";
 import App from "./App";
-import Login from "./Login"; // Make sure this file exists
+import Login from "./login"; // Make sure this file exists
 
 // Simple auth check (localStorage-based)
 const isAuthenticated = () => {
