@@ -275,6 +275,17 @@ function App() {
         >
           📤 Export CSV
         </button>
+
+        <button
+  onClick={() => {
+    localStorage.removeItem("auth");
+    window.location.href = "/login";
+  }}
+  className="text-sm text-red-600 hover:underline absolute top-4 right-4"
+>
+  Logout
+</button>
+
       </div>
       {report.length > 0 && (
         <div className="overflow-x-auto bg-white rounded shadow">
