@@ -237,7 +237,12 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-100 p-8">
-      
+      {loading && (
+  <div className="fixed inset-0 bg-white bg-opacity-80 flex flex-col items-center justify-center z-50">
+    <div className="border-4 border-blue-500 border-t-transparent rounded-full w-16 h-16 animate-spin mb-4"></div>
+    <p className="text-blue-700 font-semibold text-lg">Uploading file, please wait...</p>
+  </div>
+)}
       <h1 className="text-2xl font-bold mb-6">📊 LTV Report Dashboard</h1>
       <div className="mb-6 flex gap-4 flex-wrap items-center">
         <input type="file" onChange={handleFileChange} />
