@@ -3,8 +3,8 @@ import { useRef, useState, useEffect, useMemo } from "react";
 import axios from "axios";
 import { unparse } from "papaparse";
 //import html2pdf from "html2pdf.js";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid,PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
-
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid,Tooltip, Legend, ResponsiveContainer } from "recharts";
+// import {Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
 function App() {
   const [file, setFile] = useState<File | null>(null);
