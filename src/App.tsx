@@ -21,7 +21,7 @@ function App() {
   const [isPrinting, setIsPrinting] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
   const previousSearch = useRef("");
- const COLORS = ["#3b82f6", "#22c55e", "#f97316", "#ef4444", "#a855f7"];
+  const COLORS = ["#3b82f6", "#22c55e", "#f97316", "#ef4444", "#a855f7"];
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0];
