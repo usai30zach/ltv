@@ -3,7 +3,8 @@ import { useRef, useState, useEffect, useMemo } from "react";
 import axios from "axios";
 import { unparse } from "papaparse";
 //import html2pdf from "html2pdf.js";
-import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid,PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
+
 
 function App() {
   const [file, setFile] = useState<File | null>(null);
@@ -362,8 +363,25 @@ function App() {
       <h2 className="text-lg font-bold mb-6 text-blue-700">
         Transaction History: {selectedCustomer.CustomerID || selectedCustomer.Customer}
       </h2>
-
       <ResponsiveContainer width="100%" height={250}>
+  <BarChart
+    data={getCustomerGroupedOrders(selectedCustomer.CustomerID).summary}
+    margin={{ top: 10, right: 30, left: 0, bottom: 5 }}
+  >
+    <CartesianGrid strokeDasharray="3 3" />
+    <XAxis dataKey="month" />
+    <YAxis />
+    <Tooltip />
+    <Legend />
+    <Bar
+      dataKey="transactionCount"
+      name="Transactions"
+      fill="#3b82f6"
+    />
+  </BarChart>
+</ResponsiveContainer>
+
+      {/* <ResponsiveContainer width="100%" height={250}>
         <PieChart>
           <Pie
             data={getCustomerGroupedOrders(selectedCustomer.CustomerID).summary}
@@ -379,7 +397,7 @@ function App() {
           <Tooltip />
           <Legend />
         </PieChart>
-      </ResponsiveContainer>
+      </ResponsiveContainer> */}
 
       <div className="mt-6 space-y-8">
         {getCustomerGroupedOrders(selectedCustomer.CustomerID).summary.map((row, idx) => (
