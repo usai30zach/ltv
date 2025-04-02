@@ -3,7 +3,7 @@ import { useRef, useState, useEffect, useMemo } from "react";
 import axios from "axios";
 import { unparse } from "papaparse";
 //import html2pdf from "html2pdf.js";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid,Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { BarChart, Bar, XAxis, YAxis,Tooltip, Legend, ResponsiveContainer, Cell } from "recharts";
 // import {Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
 function App() {
@@ -21,7 +21,7 @@ function App() {
   const [isPrinting, setIsPrinting] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
   const previousSearch = useRef("");
-  // const COLORS = ["#3b82f6", "#22c55e", "#f97316", "#ef4444", "#a855f7"];
+ const COLORS = ["#3b82f6", "#22c55e", "#f97316", "#ef4444", "#a855f7"];
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0];
@@ -363,21 +363,17 @@ function App() {
       <h2 className="text-lg font-bold mb-6 text-blue-700">
         Transaction History: {selectedCustomer.CustomerID || selectedCustomer.Customer}
       </h2>
-      <ResponsiveContainer width="100%" height={250}>
-  <BarChart
-    data={getCustomerGroupedOrders(selectedCustomer.CustomerID).summary}
-    margin={{ top: 10, right: 30, left: 0, bottom: 5 }}
-  >
-    <CartesianGrid strokeDasharray="3 3" />
+      <ResponsiveContainer width="100%" height={300}>
+  <BarChart data={getCustomerGroupedOrders(selectedCustomer.CustomerID).summary}>
     <XAxis dataKey="month" />
     <YAxis />
     <Tooltip />
     <Legend />
-    <Bar
-      dataKey="transactionCount"
-      name="Transactions"
-      fill="#3b82f6"
-    />
+    <Bar dataKey="transactionCount" name="Transactions">
+      {getCustomerGroupedOrders(selectedCustomer.CustomerID).summary.map((_, index) => (
+        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+      ))}
+    </Bar>
   </BarChart>
 </ResponsiveContainer>
 
